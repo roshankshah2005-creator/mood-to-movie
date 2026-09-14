@@ -18,14 +18,19 @@
             Find My Movie
         </button>
 
+        <!-- Loading Spinner -->
         <div id="loading" class="hidden flex flex-col items-center justify-center mt-8 space-y-3 text-gray-400">
             <div class="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <p class="text-purple-400 font-medium">Finding movies that match your vibe...</p>
         </div>
+
+        <!-- NEW: On-Screen Error Box -->
+        <div id="errorDisplay" class="hidden mt-8 p-4 bg-red-900/40 border border-red-500 rounded-lg text-red-200 font-mono text-sm break-words whitespace-pre-wrap"></div>
         
         <div id="resultsList" class="mt-8 space-y-6"></div>
     </div>
 
+    <!-- Import Transformers.js -->
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0/dist/transformers.min.js';
         
@@ -35,39 +40,50 @@
         const btn = document.getElementById('searchBtn');
         const loading = document.getElementById('loading');
         const resultsDiv = document.getElementById('resultsList');
+        const errorDisplay = document.getElementById('errorDisplay');
 
         btn.addEventListener('click', async () => {
             const mood = document.getElementById('moodInput').value;
             if (!mood.trim()) return alert("Please enter a mood first!");
 
+            // Reset UI
             btn.disabled = true;
             loading.classList.remove('hidden');
+            errorDisplay.classList.add('hidden');
             resultsDiv.innerHTML = '';
 
             try {
-                // 1. Load the AI Model silently in the background (Cached after first use)
+                // 1. Load Model
                 if (!extractor) {
                     extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
                 }
 
-                // 2. Turn the text into a vector
+                // 2. Generate Vector
                 const output = await extractor(mood, { pooling: 'mean', normalize: true });
                 const vectorArray = Array.from(output.data);
 
-                // 3. Send the vector to the Vercel backend for matching
+                // 3. Call Vercel Backend
                 const response = await fetch('/api/recommend', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ vector: vectorArray, num_results: 5 })
                 });
 
+                // Check for Server Crash
                 if (!response.ok) {
-                    throw new Error("Server responded with an error");
+                    let serverErrorMessage = "Unknown Server Error";
+                    try {
+                        const errData = await response.json();
+                        serverErrorMessage = errData.detail || JSON.stringify(errData);
+                    } catch (e) {
+                        serverErrorMessage = response.statusText;
+                    }
+                    throw new Error(`Vercel Backend Error (HTTP ${response.status}):\n${serverErrorMessage}`);
                 }
 
                 const data = await response.json();
                 
-                // 4. Render results
+                // 4. Render Results
                 data.results.forEach(movie => {
                     resultsDiv.innerHTML += `
                         <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 hover:border-purple-500 transition-colors duration-300">
@@ -78,10 +94,11 @@
                     `;
                 });
             } catch (err) {
+                // Print the exact error to the red box on the screen
                 console.error(err);
-                alert("Something went wrong connecting to the server. Please try again.");
+                errorDisplay.innerText = `🚨 Error Caught:\n${err.message}\n\n(If you see a 500 error, check your Vercel Logs dashboard.)`;
+                errorDisplay.classList.remove('hidden');
             } finally {
-                
                 btn.disabled = false;
                 loading.classList.add('hidden');
             }
