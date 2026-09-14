@@ -28,7 +28,7 @@
     min-height:100vh;
   }
 
-  /* --- film strip header, the one bold moment --- */
+  /* --- film strip header --- */
   .filmstrip{
     height:22px;
     width:100%;
@@ -86,6 +86,24 @@
     padding:20px;
   }
 
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .surprise-btn {
+    background: transparent;
+    border: none;
+    color: var(--gold);
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    padding: 0;
+  }
+  .surprise-btn:hover { text-decoration: underline; }
+
   textarea{
     width:100%;
     resize:vertical;
@@ -106,6 +124,20 @@
     margin:16px 0;
   }
 
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--slate);
+  }
+
+  .controls input[type="range"] {
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+
   button#searchBtn{
     width:100%;
     background:var(--gold);
@@ -119,20 +151,36 @@
     cursor:pointer;
     transition: box-shadow 160ms ease, transform 160ms ease;
   }
-  button#searchBtn:hover{
-    box-shadow: 0 0 0 6px rgba(232,163,61,0.15);
-  }
-  button#searchBtn:active{
-    transform: scale(0.99);
-  }
+  button#searchBtn:hover{ box-shadow: 0 0 0 6px rgba(232,163,61,0.15); }
+  button#searchBtn:active{ transform: scale(0.99); }
   button#searchBtn:focus-visible,
-  textarea:focus-visible{
-    outline: 2px solid var(--gold);
-    outline-offset: 2px;
+  textarea:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
+  button#searchBtn:disabled{ opacity:0.6; cursor:default; }
+
+  /* --- history chips --- */
+  .history-container {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
-  button#searchBtn:disabled{
-    opacity:0.6;
-    cursor:default;
+  .history-chip {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--slate);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-chip:hover {
+    border-color: var(--slate);
+    color: #EDEBE4;
   }
 
   /* --- loading --- */
@@ -155,11 +203,8 @@
     animation:spin 0.8s linear infinite;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce){
-    .spinner{ animation:none; }
-  }
 
-  /* --- error state: a torn ticket, not an apology --- */
+  /* --- error state --- */
   #errorDisplay{
     display:none;
     margin-top:32px;
@@ -177,7 +222,7 @@
     margin:0 0 8px;
   }
   #errorDisplay pre{
-    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-family: ui-monospace, Consolas, monospace;
     font-size:13px;
     white-space:pre-wrap;
     word-break:break-word;
@@ -185,17 +230,27 @@
     margin:0;
   }
 
-  /* --- results: an editorial list, not a card grid --- */
-  #resultsList{
-    margin-top:48px;
+  /* --- results --- */
+  .section-title {
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-style:italic;
+    font-size: 24px;
+    color: var(--slate);
+    margin: 48px 0 16px;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 8px;
+    display: none;
   }
+  .section-title.active { display: block; }
+
   .result-row{
     display:flex;
     gap:20px;
     padding:24px 0;
     border-top:1px solid var(--hairline);
   }
-  .result-row:first-child{ border-top:1px solid var(--hairline); }
+  #resultsList .result-row:first-child{ border-top: none; padding-top: 8px;}
 
   .frame-number{
     font-family:'IBM Plex Sans', sans-serif;
@@ -241,8 +296,29 @@
     color:#C8C6BE;
     font-size:15px;
     line-height:1.6;
-    margin:0;
+    margin:0 0 12px;
   }
+
+  .result-actions {
+    display: flex;
+    gap: 16px;
+  }
+
+  .action-btn {
+    background: transparent;
+    border: none;
+    color: var(--gold);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .action-btn:hover { text-decoration: underline; }
+  .action-btn.saved { color: var(--slate); pointer-events: none; }
 
   @media (max-width:480px){
     main{ padding:48px 18px 72px; }
@@ -259,10 +335,23 @@
     <p class="eyebrow-free-standfirst">Describe how you want to feel. A small model running in your browser matches it to a film.</p>
 
     <div class="panel">
+      <div class="panel-header">
+        <span style="color: var(--slate);">Your Vibe</span>
+        <button id="surpriseBtn" class="surprise-btn">✨ Surprise me</button>
+      </div>
       <textarea id="moodInput" placeholder="A rainy cyberpunk detective story that feels lonely but action-packed..."></textarea>
       <div class="panel-divider"></div>
+      
+      <div class="controls">
+        <label for="numResultsSlider">Results to show: <span id="numResultsLabel" style="color:#EDEBE4; font-weight:600;">5</span></label>
+        <input type="range" id="numResultsSlider" min="1" max="10" value="5">
+      </div>
+
       <button id="searchBtn">Find my film</button>
     </div>
+
+    <!-- History Chips -->
+    <div id="historyContainer" class="history-container"></div>
 
     <div id="loading">
       <div class="spinner"></div>
@@ -275,6 +364,10 @@
     </div>
 
     <div id="resultsList"></div>
+
+    <!-- Favorites Section -->
+    <h3 id="savedTitle" class="section-title">Saved Films</h3>
+    <div id="savedList"></div>
   </main>
 
   <script type="module">
@@ -282,28 +375,168 @@
 
     env.allowLocalModels = false;
 
+    // --- DOM Elements ---
     let extractor = null;
     const btn = document.getElementById('searchBtn');
+    const moodInput = document.getElementById('moodInput');
     const loading = document.getElementById('loading');
     const resultsDiv = document.getElementById('resultsList');
     const errorDisplay = document.getElementById('errorDisplay');
     const errorText = document.getElementById('errorText');
     const loadingLabel = loading.querySelector('span');
+    
+    // New Feature Elements
+    const surpriseBtn = document.getElementById('surpriseBtn');
+    const numResultsSlider = document.getElementById('numResultsSlider');
+    const numResultsLabel = document.getElementById('numResultsLabel');
+    const historyContainer = document.getElementById('historyContainer');
+    const savedList = document.getElementById('savedList');
+    const savedTitle = document.getElementById('savedTitle');
 
+    // --- Global State ---
+    let currentResults = []; // Temporarily hold fetched results for saving/copying
+    let savedMovies = JSON.parse(localStorage.getItem('vibeSavedMovies')) || [];
+    let searchHistory = JSON.parse(localStorage.getItem('vibeSearchHistory')) || [];
+
+    // --- Utility: Escape HTML ---
     function escapeHtml(str){
       return String(str).replace(/[&<>"']/g, c => ({
         '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
       }[c]));
     }
 
+    // --- Feature: Surprise Me ---
+    const surpriseMoods = [
+      "A quiet, visually stunning sci-fi about isolation",
+      "A fast-paced heist movie with a jazz soundtrack",
+      "A nostalgic coming-of-age story set in the 1980s",
+      "A dark, psychological thriller that messes with your mind",
+      "A sweeping fantasy epic with massive battles and lore",
+      "A cozy romance set in a small rainy town"
+    ];
+    
+    surpriseBtn.addEventListener('click', () => {
+      const randomMood = surpriseMoods[Math.floor(Math.random() * surpriseMoods.length)];
+      moodInput.value = randomMood;
+    });
+
+    // --- Feature: Slider Update ---
+    numResultsSlider.addEventListener('input', (e) => {
+      numResultsLabel.textContent = e.target.value;
+    });
+
+    // --- Feature: Search History ---
+    function renderHistory() {
+      historyContainer.innerHTML = '';
+      searchHistory.forEach(mood => {
+        const chip = document.createElement('button');
+        chip.className = 'history-chip';
+        chip.textContent = mood;
+        chip.title = mood;
+        chip.onclick = () => {
+          moodInput.value = mood;
+          btn.click(); // Auto-search on click
+        };
+        historyContainer.appendChild(chip);
+      });
+    }
+
+    function addToHistory(mood) {
+      if (!searchHistory.includes(mood)) {
+        searchHistory.unshift(mood); // Add to beginning
+        if (searchHistory.length > 5) searchHistory.pop(); // Keep only last 5
+        localStorage.setItem('vibeSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+      }
+    }
+
+    // --- Feature: Saved Favorites ---
+    function renderSaved() {
+      savedList.innerHTML = '';
+      if (savedMovies.length > 0) {
+        savedTitle.classList.add('active');
+        savedMovies.forEach((movie, i) => {
+          savedList.innerHTML += `
+            <div class="result-row">
+              <div class="frame-number">★</div>
+              <div class="result-body">
+                <div class="result-top">
+                  <h2 class="result-title">${escapeHtml(movie.title)}</h2>
+                </div>
+                <p class="result-genres">${escapeHtml(movie.genres)}</p>
+                <p class="result-overview">${escapeHtml(movie.overview)}</p>
+                <div class="result-actions">
+                  <button class="action-btn remove-btn" data-id="${i}">🗑 Remove</button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        savedTitle.classList.remove('active');
+      }
+    }
+
+    // Handle Clicks for dynamically generated buttons (Save, Copy, Remove)
+    document.addEventListener('click', async (e) => {
+      // COPY BUTTON
+      if (e.target.classList.contains('copy-btn')) {
+        const idx = e.target.getAttribute('data-index');
+        const movie = currentResults[idx];
+        const textToCopy = `Check out this film: ${movie.title} (${movie.genres})\n\n${movie.overview}`;
+        
+        try {
+          await navigator.clipboard.writeText(textToCopy);
+          e.target.textContent = "✓ Copied!";
+          setTimeout(() => e.target.textContent = "🔗 Copy to share", 2000);
+        } catch (err) {
+          console.error('Failed to copy: ', err);
+        }
+      }
+
+      // SAVE BUTTON
+      if (e.target.classList.contains('save-btn')) {
+        const idx = e.target.getAttribute('data-index');
+        const movie = currentResults[idx];
+        
+        // Prevent duplicates
+        if (!savedMovies.some(m => m.title === movie.title)) {
+          savedMovies.unshift(movie);
+          localStorage.setItem('vibeSavedMovies', JSON.stringify(savedMovies));
+          renderSaved();
+        }
+        
+        e.target.textContent = "✓ Saved";
+        e.target.classList.add('saved');
+      }
+
+      // REMOVE SAVED BUTTON
+      if (e.target.classList.contains('remove-btn')) {
+        const idx = e.target.getAttribute('data-id');
+        savedMovies.splice(idx, 1);
+        localStorage.setItem('vibeSavedMovies', JSON.stringify(savedMovies));
+        renderSaved();
+      }
+    });
+
+    // Initialize UI on load
+    renderHistory();
+    renderSaved();
+
+    // --- Main Search Execution ---
     btn.addEventListener('click', async () => {
-      const mood = document.getElementById('moodInput').value;
+      const mood = moodInput.value;
+      const numResults = parseInt(numResultsSlider.value);
+      
       if (!mood.trim()) return;
 
       btn.disabled = true;
       loading.classList.add('active');
       errorDisplay.classList.remove('active');
       resultsDiv.innerHTML = '';
+      currentResults = []; // Reset global state
+
+      addToHistory(mood.trim());
 
       try {
         if (!extractor) {
@@ -318,7 +551,7 @@
         const response = await fetch('/api/recommend', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vector: vectorArray, num_results: 5 })
+          body: JSON.stringify({ vector: vectorArray, num_results: numResults })
         });
 
         if (!response.ok) {
@@ -326,13 +559,17 @@
           try {
             const errData = await response.json();
             serverErrorMessage = errData.detail || JSON.stringify(errData);
-          } catch (e) { /* keep statusText */ }
+          } catch (e) {}
           throw new Error(`Backend error (HTTP ${response.status}):\n${serverErrorMessage}`);
         }
 
         const data = await response.json();
+        currentResults = data.results; // Save to global state for button access
 
         data.results.forEach((movie, i) => {
+          // Check if already saved to render correct button state
+          const isSaved = savedMovies.some(m => m.title === movie.title);
+          
           resultsDiv.innerHTML += `
             <div class="result-row">
               <div class="frame-number">${String(i + 1).padStart(2, '0')}</div>
@@ -343,6 +580,12 @@
                 </div>
                 <p class="result-genres">${escapeHtml(movie.genres)}</p>
                 <p class="result-overview">${escapeHtml(movie.overview)}</p>
+                <div class="result-actions">
+                  <button class="action-btn save-btn ${isSaved ? 'saved' : ''}" data-index="${i}">
+                    ${isSaved ? '✓ Saved' : '❤️ Save film'}
+                  </button>
+                  <button class="action-btn copy-btn" data-index="${i}">🔗 Copy to share</button>
+                </div>
               </div>
             </div>
           `;
