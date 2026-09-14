@@ -1,108 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mood-to-Movie Matcher</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Matcher — find a film that fits the feeling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12141C;
+    --ink-raised:#191C26;
+    --gold:#E8A33D;
+    --velvet:#C1443B;
+    --paper:#F1ECE0;
+    --slate:#8B93A8;
+    --hairline:#2A2D3A;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--ink);
+    color:#EDEBE4;
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+  }
+
+  /* --- film strip header, the one bold moment --- */
+  .filmstrip{
+    height:22px;
+    width:100%;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 10px,
+        var(--ink-raised) 10px 30px
+      );
+    position:relative;
+    border-bottom:1px solid var(--hairline);
+  }
+  .filmstrip::before,
+  .filmstrip::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    background-image: radial-gradient(circle, var(--ink) 4px, transparent 4.5px);
+    background-size: 30px 22px;
+    background-position: 5px center;
+  }
+
+  main{
+    max-width:640px;
+    margin:0 auto;
+    padding:64px 24px 96px;
+  }
+
+  .eyebrow-free-standfirst{
+    text-align:center;
+    color:var(--slate);
+    font-size:16px;
+    line-height:1.6;
+    max-width:440px;
+    margin:16px auto 0;
+  }
+
+  h1{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    text-align:center;
+    font-size:clamp(34px, 6vw, 52px);
+    line-height:1.1;
+    margin:0;
+    color:#F6F3EC;
+  }
+
+  /* --- input panel --- */
+  .panel{
+    margin-top:40px;
+    background:var(--ink-raised);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:20px;
+  }
+
+  textarea{
+    width:100%;
+    resize:vertical;
+    min-height:88px;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#EDEBE4;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:16px;
+    line-height:1.5;
+  }
+  textarea::placeholder{ color:#5C6274; }
+
+  .panel-divider{
+    height:1px;
+    background:var(--hairline);
+    margin:16px 0;
+  }
+
+  button#searchBtn{
+    width:100%;
+    background:var(--gold);
+    color:#1B1400;
+    border:none;
+    border-radius:8px;
+    padding:14px 18px;
+    font-size:16px;
+    font-weight:600;
+    font-family:'IBM Plex Sans', sans-serif;
+    cursor:pointer;
+    transition: box-shadow 160ms ease, transform 160ms ease;
+  }
+  button#searchBtn:hover{
+    box-shadow: 0 0 0 6px rgba(232,163,61,0.15);
+  }
+  button#searchBtn:active{
+    transform: scale(0.99);
+  }
+  button#searchBtn:focus-visible,
+  textarea:focus-visible{
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  button#searchBtn:disabled{
+    opacity:0.6;
+    cursor:default;
+  }
+
+  /* --- loading --- */
+  #loading{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    margin-top:32px;
+    color:var(--slate);
+    font-size:15px;
+  }
+  #loading.active{ display:flex; }
+
+  .spinner{
+    width:18px; height:18px;
+    border-radius:50%;
+    border:2px solid var(--hairline);
+    border-top-color:var(--gold);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){
+    .spinner{ animation:none; }
+  }
+
+  /* --- error state: a torn ticket, not an apology --- */
+  #errorDisplay{
+    display:none;
+    margin-top:32px;
+    background:var(--paper);
+    color:#3A2E20;
+    border-radius:8px;
+    padding:20px;
+  }
+  #errorDisplay.active{ display:block; }
+  #errorDisplay h3{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:20px;
+    margin:0 0 8px;
+  }
+  #errorDisplay pre{
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size:13px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    color:#5A4A38;
+    margin:0;
+  }
+
+  /* --- results: an editorial list, not a card grid --- */
+  #resultsList{
+    margin-top:48px;
+  }
+  .result-row{
+    display:flex;
+    gap:20px;
+    padding:24px 0;
+    border-top:1px solid var(--hairline);
+  }
+  .result-row:first-child{ border-top:1px solid var(--hairline); }
+
+  .frame-number{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    color:var(--velvet);
+    font-weight:600;
+    padding-top:4px;
+    min-width:24px;
+  }
+
+  .result-body{ flex:1; min-width:0; }
+
+  .result-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:16px;
+  }
+
+  .result-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:22px;
+    color:#F6F3EC;
+    margin:0;
+  }
+
+  .result-score{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:20px;
+    color:var(--gold);
+    white-space:nowrap;
+  }
+
+  .result-genres{
+    color:var(--slate);
+    font-size:14px;
+    margin:4px 0 10px;
+  }
+
+  .result-overview{
+    color:#C8C6BE;
+    font-size:15px;
+    line-height:1.6;
+    margin:0;
+  }
+
+  @media (max-width:480px){
+    main{ padding:48px 18px 72px; }
+    .result-title{ font-size:19px; }
+  }
+</style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center p-8">
+<body>
 
-    <div class="max-w-2xl w-full mt-12">
-        <h1 class="text-5xl font-bold text-center mb-4 text-purple-400">🎬 Vibe Matcher</h1>
-        <p class="text-center text-gray-400 mb-8">Type a mood. The AI runs directly in your browser.</p>
+  <div class="filmstrip"></div>
 
-        <textarea id="moodInput" rows="3" class="w-full bg-gray-800 rounded-lg p-4 text-white focus:ring-2 focus:ring-purple-500 outline-none mb-4 shadow-inner border border-gray-700" placeholder="e.g., A rainy cyberpunk detective story that feels lonely but action-packed..."></textarea>
-        
-        <button id="searchBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
-            Find My Movie
-        </button>
+  <main>
+    <h1>What's tonight's mood?</h1>
+    <p class="eyebrow-free-standfirst">Describe how you want to feel. A small model running in your browser matches it to a film.</p>
 
-        <!-- Loading Spinner -->
-        <div id="loading" class="hidden flex flex-col items-center justify-center mt-8 space-y-3 text-gray-400">
-            <div class="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-purple-400 font-medium">Finding movies that match your vibe...</p>
-        </div>
-
-        <!-- NEW: On-Screen Error Box -->
-        <div id="errorDisplay" class="hidden mt-8 p-4 bg-red-900/40 border border-red-500 rounded-lg text-red-200 font-mono text-sm break-words whitespace-pre-wrap"></div>
-        
-        <div id="resultsList" class="mt-8 space-y-6"></div>
+    <div class="panel">
+      <textarea id="moodInput" placeholder="A rainy cyberpunk detective story that feels lonely but action-packed..."></textarea>
+      <div class="panel-divider"></div>
+      <button id="searchBtn">Find my film</button>
     </div>
 
-    <!-- Import Transformers.js -->
-    <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0/dist/transformers.min.js';
-        
-        env.allowLocalModels = false;
+    <div id="loading">
+      <div class="spinner"></div>
+      <span>Scanning for your film...</span>
+    </div>
 
-        let extractor = null;
-        const btn = document.getElementById('searchBtn');
-        const loading = document.getElementById('loading');
-        const resultsDiv = document.getElementById('resultsList');
-        const errorDisplay = document.getElementById('errorDisplay');
+    <div id="errorDisplay">
+      <h3>Screening interrupted</h3>
+      <pre id="errorText"></pre>
+    </div>
 
-        btn.addEventListener('click', async () => {
-            const mood = document.getElementById('moodInput').value;
-            if (!mood.trim()) return alert("Please enter a mood first!");
+    <div id="resultsList"></div>
+  </main>
 
-            // Reset UI
-            btn.disabled = true;
-            loading.classList.remove('hidden');
-            errorDisplay.classList.add('hidden');
-            resultsDiv.innerHTML = '';
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0/dist/transformers.min.js';
 
-            try {
-                // 1. Load Model
-                if (!extractor) {
-                    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-                }
+    env.allowLocalModels = false;
 
-                // 2. Generate Vector
-                const output = await extractor(mood, { pooling: 'mean', normalize: true });
-                const vectorArray = Array.from(output.data);
+    let extractor = null;
+    const btn = document.getElementById('searchBtn');
+    const loading = document.getElementById('loading');
+    const resultsDiv = document.getElementById('resultsList');
+    const errorDisplay = document.getElementById('errorDisplay');
+    const errorText = document.getElementById('errorText');
+    const loadingLabel = loading.querySelector('span');
 
-                // 3. Call Vercel Backend
-                const response = await fetch('/api/recommend', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ vector: vectorArray, num_results: 5 })
-                });
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+      }[c]));
+    }
 
-                // Check for Server Crash
-                if (!response.ok) {
-                    let serverErrorMessage = "Unknown Server Error";
-                    try {
-                        const errData = await response.json();
-                        serverErrorMessage = errData.detail || JSON.stringify(errData);
-                    } catch (e) {
-                        serverErrorMessage = response.statusText;
-                    }
-                    throw new Error(`Vercel Backend Error (HTTP ${response.status}):\n${serverErrorMessage}`);
-                }
+    btn.addEventListener('click', async () => {
+      const mood = document.getElementById('moodInput').value;
+      if (!mood.trim()) return;
 
-                const data = await response.json();
-                
-                // 4. Render Results
-                data.results.forEach(movie => {
-                    resultsDiv.innerHTML += `
-                        <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 hover:border-purple-500 transition-colors duration-300">
-                            <h2 class="text-2xl font-bold text-white mb-1">${movie.title}</h2>
-                            <p class="text-sm text-purple-400 mb-4 font-semibold">Match Score: ${movie.score}% • ${movie.genres}</p>
-                            <p class="text-gray-300 leading-relaxed">${movie.overview}</p>
-                        </div>
-                    `;
-                });
-            } catch (err) {
-                // Print the exact error to the red box on the screen
-                console.error(err);
-                errorDisplay.innerText = `🚨 Error Caught:\n${err.message}\n\n(If you see a 500 error, check your Vercel Logs dashboard.)`;
-                errorDisplay.classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
-                loading.classList.add('hidden');
-            }
+      btn.disabled = true;
+      loading.classList.add('active');
+      errorDisplay.classList.remove('active');
+      resultsDiv.innerHTML = '';
+
+      try {
+        if (!extractor) {
+          loadingLabel.textContent = 'Loading the model, first time only...';
+          extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+        }
+        loadingLabel.textContent = 'Scanning for your film...';
+
+        const output = await extractor(mood, { pooling: 'mean', normalize: true });
+        const vectorArray = Array.from(output.data);
+
+        const response = await fetch('/api/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vector: vectorArray, num_results: 5 })
         });
-    </script>
+
+        if (!response.ok) {
+          let serverErrorMessage = response.statusText;
+          try {
+            const errData = await response.json();
+            serverErrorMessage = errData.detail || JSON.stringify(errData);
+          } catch (e) { /* keep statusText */ }
+          throw new Error(`Backend error (HTTP ${response.status}):\n${serverErrorMessage}`);
+        }
+
+        const data = await response.json();
+
+        data.results.forEach((movie, i) => {
+          resultsDiv.innerHTML += `
+            <div class="result-row">
+              <div class="frame-number">${String(i + 1).padStart(2, '0')}</div>
+              <div class="result-body">
+                <div class="result-top">
+                  <h2 class="result-title">${escapeHtml(movie.title)}</h2>
+                  <span class="result-score">${movie.score}%</span>
+                </div>
+                <p class="result-genres">${escapeHtml(movie.genres)}</p>
+                <p class="result-overview">${escapeHtml(movie.overview)}</p>
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error(err);
+        errorText.textContent = `${err.message}\n\nCheck your Vercel deployment logs for the full trace.`;
+        errorDisplay.classList.add('active');
+      } finally {
+        btn.disabled = false;
+        loading.classList.remove('active');
+      }
+    });
+  </script>
 </body>
 </html>
