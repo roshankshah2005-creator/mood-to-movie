@@ -25,7 +25,7 @@ def recommend(query: Query):
     try:
         user_vector = np.array(query.vector)
         
-        # 3. Calculate Cosine Similarity using pure numpy (No scikit-learn needed!)
+        # 3. Calculate Cosine Similarity using pure numpy
         dot_products = np.dot(movie_embeddings, user_vector)
         norm_movies = np.linalg.norm(movie_embeddings, axis=1)
         norm_user = np.linalg.norm(user_vector)
