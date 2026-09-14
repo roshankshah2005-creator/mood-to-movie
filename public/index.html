@@ -18,11 +18,10 @@
             Find My Movie
         </button>
 
-        <div id="loading" class="hidden text-center text-gray-400 mt-8 space-y-2">
-            <div id="statusText" class="font-bold text-purple-400">Initializing AI... (Might take a few seconds on first run)</div>
-            <div class="w-full bg-gray-700 rounded-full h-2.5">
-                <div id="progressBar" class="bg-purple-600 h-2.5 rounded-full" style="width: 0%"></div>
-            </div>
+       
+        <div id="loading" class="hidden flex flex-col items-center justify-center mt-8 space-y-3 text-gray-400">
+            <div class="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-purple-400 font-medium">Finding movies that match your vibe...</p>
         </div>
         
         <div id="resultsList" class="mt-8 space-y-6"></div>
