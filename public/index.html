@@ -157,7 +157,7 @@
   textarea:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
   button#searchBtn:disabled{ opacity:0.6; cursor:default; }
 
-  /* --- history chips --- */
+  /* --- history chips (UPDATED) --- */
   .history-container {
     margin-top: 16px;
     display: flex;
@@ -165,22 +165,40 @@
     gap: 8px;
   }
   .history-chip {
+    display: inline-flex;
+    align-items: center;
     background: transparent;
     border: 1px solid var(--hairline);
-    color: var(--slate);
-    padding: 4px 10px;
     border-radius: 20px;
     font-size: 12px;
-    cursor: pointer;
     transition: all 0.2s;
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: 220px;
   }
   .history-chip:hover {
     border-color: var(--slate);
+  }
+  .history-chip-text {
+    color: var(--slate);
+    padding: 4px 4px 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s;
+  }
+  .history-chip-text:hover {
     color: #EDEBE4;
+  }
+  .history-chip-delete {
+    color: var(--slate);
+    padding: 4px 10px 4px 4px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .history-chip-delete:hover {
+    color: var(--velvet);
   }
 
   /* --- loading --- */
@@ -394,7 +412,7 @@
     const savedTitle = document.getElementById('savedTitle');
 
     // --- Global State ---
-    let currentResults = []; // Temporarily hold fetched results for saving/copying
+    let currentResults = [];
     let savedMovies = JSON.parse(localStorage.getItem('vibeSavedMovies')) || [];
     let searchHistory = JSON.parse(localStorage.getItem('vibeSearchHistory')) || [];
 
@@ -425,26 +443,45 @@
       numResultsLabel.textContent = e.target.value;
     });
 
-    // --- Feature: Search History ---
+    // --- Feature: Search History (UPDATED FOR DELETION) ---
     function renderHistory() {
       historyContainer.innerHTML = '';
-      searchHistory.forEach(mood => {
-        const chip = document.createElement('button');
+      searchHistory.forEach((mood, index) => {
+        const chip = document.createElement('div');
         chip.className = 'history-chip';
-        chip.textContent = mood;
-        chip.title = mood;
-        chip.onclick = () => {
+        
+        // Text part (searches)
+        const textSpan = document.createElement('span');
+        textSpan.className = 'history-chip-text';
+        textSpan.textContent = mood;
+        textSpan.title = mood;
+        textSpan.onclick = () => {
           moodInput.value = mood;
-          btn.click(); // Auto-search on click
+          btn.click();
         };
+
+        // Delete part
+        const deleteSpan = document.createElement('span');
+        deleteSpan.className = 'history-chip-delete';
+        deleteSpan.innerHTML = '&times;';
+        deleteSpan.title = 'Remove from history';
+        deleteSpan.onclick = (e) => {
+          e.stopPropagation(); // Prevents the click from bubbling up
+          searchHistory.splice(index, 1);
+          localStorage.setItem('vibeSearchHistory', JSON.stringify(searchHistory));
+          renderHistory();
+        };
+
+        chip.appendChild(textSpan);
+        chip.appendChild(deleteSpan);
         historyContainer.appendChild(chip);
       });
     }
 
     function addToHistory(mood) {
       if (!searchHistory.includes(mood)) {
-        searchHistory.unshift(mood); // Add to beginning
-        if (searchHistory.length > 5) searchHistory.pop(); // Keep only last 5
+        searchHistory.unshift(mood);
+        if (searchHistory.length > 5) searchHistory.pop();
         localStorage.setItem('vibeSearchHistory', JSON.stringify(searchHistory));
         renderHistory();
       }
@@ -534,7 +571,7 @@
       loading.classList.add('active');
       errorDisplay.classList.remove('active');
       resultsDiv.innerHTML = '';
-      currentResults = []; // Reset global state
+      currentResults = []; 
 
       addToHistory(mood.trim());
 
@@ -564,10 +601,9 @@
         }
 
         const data = await response.json();
-        currentResults = data.results; // Save to global state for button access
+        currentResults = data.results; 
 
         data.results.forEach((movie, i) => {
-          // Check if already saved to render correct button state
           const isSaved = savedMovies.some(m => m.title === movie.title);
           
           resultsDiv.innerHTML += `
